@@ -1,0 +1,186 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+  // Further reading:
+  // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+  // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+  url      = env("DATABASE_URL")
+}
+
+model WorkSpace {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  license   String
+  apiurl    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // createdBy   User   @relation("CreatedByUser", fields: [createdById], references: [id])
+  createdById String? @db.ObjectId
+  users       User[]
+  groups      Group[]
+
+  @@index([name])
+}
+
+model User {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  name             String?
+  email            String            @unique
+  password         String?
+  image            String?
+  license          String?
+  userId           String?
+  contact          BigInt?
+  online           Boolean           @default(false)
+  socketId         String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  workSpace        WorkSpace         @relation(fields: [workSpaceId], references: [id])
+  workSpaceId      String            @db.ObjectId
+  groups           Group[]
+  groupMembers     GroupMember[]
+  groupMessages    GroupMessage[]
+  messageReads     MessageRead[]
+  messageReactions MessageReaction[]
+  groupReactions   GroupReaction[]
+
+  receiverMessages Message[]         @relation("receiverUser")
+  senderMessages   Message[]         @relation("senderUser")
+  attachments      Attachment[]
+  groupAttachments GroupAttachment[]
+}
+
+model Group {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  name        String            @unique
+  socketId    String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  members     GroupMember[]
+  messages    GroupMessage[]
+  attachments GroupAttachment[]
+  user        User?             @relation(fields: [userId], references: [id])
+  userId      String?           @db.ObjectId
+  workSpace   WorkSpace?        @relation(fields: [workSpaceId], references: [id])
+  workSpaceId String?           @db.ObjectId
+}
+
+model GroupMember {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  userId  String @db.ObjectId
+  groupId String @db.ObjectId
+
+  user  User  @relation(fields: [userId], references: [id])
+  group Group @relation(fields: [groupId], references: [id])
+}
+
+model Message {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  receiverId         String   @db.ObjectId
+  senderId           String   @db.ObjectId
+  content            String?
+  fileUrl            String?
+  voiceUrl           String?
+  videoUrl           String?
+  screenRecordingUrl String?
+  duration           Float?
+  replyToId          String?  @db.ObjectId
+  createdAt          DateTime @default(now())
+  read               Boolean  @default(false)
+  tempId             String?  @unique
+  messageType        String?
+
+  receiver     User              @relation("receiverUser", fields: [receiverId], references: [id])
+  sender       User              @relation("senderUser", fields: [senderId], references: [id])
+  replyTo      Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies      Message[]         @relation("MessageReplies")
+  reactions    MessageReaction[]
+  messageReads MessageRead[]
+  attachments  Attachment[]
+}
+
+model Attachment {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  messageId String @db.ObjectId
+  userId    String @db.ObjectId
+  url       String
+  name      String
+  mimeType  String
+  size      Int
+
+  message Message @relation(fields: [messageId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+}
+
+model GroupAttachment {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  messageId String @db.ObjectId
+  userId    String @db.ObjectId
+  url       String
+  name      String
+  mimeType  String
+  size      Int
+
+  message GroupMessage @relation(fields: [messageId], references: [id])
+  user    User         @relation(fields: [userId], references: [id])
+  group   Group?       @relation(fields: [groupId], references: [id])
+  groupId String?      @db.ObjectId
+}
+
+model MessageReaction {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  messageId String @db.ObjectId
+  userId    String @db.ObjectId
+  emoji     String
+
+  message Message @relation(fields: [messageId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
+}
+
+model GroupMessage {
+  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  groupId   String          @db.ObjectId
+  senderId  String          @db.ObjectId
+  content   String?
+  fileUrl   String?
+  voiceUrl  String?
+  createdAt DateTime        @default(now())
+  readBy    MessageRead[]
+  reactions GroupReaction[]
+
+  group            Group             @relation(fields: [groupId], references: [id])
+  sender           User              @relation(fields: [senderId], references: [id])
+  groupAttachments GroupAttachment[]
+}
+
+model MessageRead {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  messageId String @db.ObjectId
+  userId    String @db.ObjectId
+
+  message        Message       @relation(fields: [messageId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
+  groupMessage   GroupMessage? @relation(fields: [groupMessageId], references: [id])
+  groupMessageId String?       @db.ObjectId
+}
+
+model GroupReaction {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  messageId String? @db.ObjectId
+  userId    String  @db.ObjectId
+  emoji     String
+
+  message GroupMessage? @relation(fields: [messageId], references: [id])
+  user    User          @relation(fields: [userId], references: [id])
+}
