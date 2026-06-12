@@ -163,12 +163,24 @@ export class MessagesController {
         },
       })),
     };
-    this.socketGateway.server
-      .to(`user:${savedMessage.receiverId}`)
-      .emit('message:new', payload);
-    this.socketGateway.server
-      .to(`user:${savedMessage.senderId}`)
-      .emit('message:new', payload);
+
+    const sock = this.socketGateway.server;
+    if (savedMessage.group) {
+      savedMessage.group.members.forEach(function (member) {
+        sock.to(`user:${member.userId}`).emit('message:new', payload);
+      });
+      this.socketGateway.server
+        .to(`user:${savedMessage.receiverId}`)
+        .emit('message:new', payload);
+    } else {
+      this.socketGateway.server
+        .to(`user:${savedMessage.receiverId}`)
+        .emit('message:new', payload);
+      this.socketGateway.server
+        .to(`user:${savedMessage.senderId}`)
+        .emit('message:new', payload);
+    }
+
     return savedMessage;
   }
 
@@ -246,12 +258,22 @@ export class MessagesController {
         },
       })),
     };
-    this.socketGateway.server
-      .to(`user:${savedMessage.receiverId}`)
-      .emit('message:new', payload);
-    this.socketGateway.server
-      .to(`user:${savedMessage.senderId}`)
-      .emit('message:new', payload);
+    const sock = this.socketGateway.server;
+    if (savedMessage.group) {
+      savedMessage.group.members.forEach(function (member) {
+        sock.to(`user:${member.userId}`).emit('message:new', payload);
+      });
+      this.socketGateway.server
+        .to(`user:${savedMessage.receiverId}`)
+        .emit('message:new', payload);
+    } else {
+      this.socketGateway.server
+        .to(`user:${savedMessage.receiverId}`)
+        .emit('message:new', payload);
+      this.socketGateway.server
+        .to(`user:${savedMessage.senderId}`)
+        .emit('message:new', payload);
+    }
     return savedMessage;
   }
 
@@ -330,12 +352,22 @@ export class MessagesController {
         },
       })),
     };
-    this.socketGateway.server
-      .to(`user:${savedMessage.receiverId}`)
-      .emit('message:new', payload);
-    this.socketGateway.server
-      .to(`user:${savedMessage.senderId}`)
-      .emit('message:new', payload);
+    const sock = this.socketGateway.server;
+    if (savedMessage.group) {
+      savedMessage.group.members.forEach(function (member) {
+        sock.to(`user:${member.userId}`).emit('message:new', payload);
+      });
+      this.socketGateway.server
+        .to(`user:${savedMessage.receiverId}`)
+        .emit('message:new', payload);
+    } else {
+      this.socketGateway.server
+        .to(`user:${savedMessage.receiverId}`)
+        .emit('message:new', payload);
+      this.socketGateway.server
+        .to(`user:${savedMessage.senderId}`)
+        .emit('message:new', payload);
+    }
     return savedMessage;
   }
 
@@ -407,12 +439,22 @@ export class MessagesController {
         size: attachment.size,
       })),
     };
-    this.socketGateway.server
-      .to(`user:${savedMessage.receiverId}`)
-      .emit('message:new', payload);
-    this.socketGateway.server
-      .to(`user:${savedMessage.senderId}`)
-      .emit('message:new', payload);
+    const sock = this.socketGateway.server;
+    if (savedMessage.group) {
+      savedMessage.group.members.forEach(function (member) {
+        sock.to(`user:${member.userId}`).emit('message:new', payload);
+      });
+      this.socketGateway.server
+        .to(`user:${savedMessage.receiverId}`)
+        .emit('message:new', payload);
+    } else {
+      this.socketGateway.server
+        .to(`user:${savedMessage.receiverId}`)
+        .emit('message:new', payload);
+      this.socketGateway.server
+        .to(`user:${savedMessage.senderId}`)
+        .emit('message:new', payload);
+    }
     return savedMessage;
   }
 }

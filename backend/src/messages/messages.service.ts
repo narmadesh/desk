@@ -155,10 +155,14 @@ export class MessagesService {
         },
       },
     });
-
+    const group = await this.prisma.group.findFirst({
+      where: { id: receiverId },
+      include: { members: true },
+    });
     return {
       ...message,
       voiceUrl: message.voiceUrl,
+      group,
     };
   }
 
@@ -194,10 +198,14 @@ export class MessagesService {
         },
       },
     });
-
+    const group = await this.prisma.group.findFirst({
+      where: { id: receiverId },
+      include: { members: true },
+    });
     return {
       ...message,
       videoUrl: message.videoUrl,
+      group,
     };
   }
 
@@ -234,9 +242,14 @@ export class MessagesService {
       },
     });
 
+    const group = await this.prisma.group.findFirst({
+      where: { id: receiverId },
+      include: { members: true },
+    });
     return {
       ...message,
       screenRecordingUrl: message.screenRecordingUrl,
+      group,
     };
   }
 
@@ -288,8 +301,13 @@ export class MessagesService {
       },
     });
 
+    const group = await this.prisma.group.findFirst({
+      where: { id: receiverId },
+      include: { members: true },
+    });
     return {
       ...messageWithAttachments,
+      group,
     };
   }
 }

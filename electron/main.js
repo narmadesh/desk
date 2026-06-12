@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron')
+const { app, BrowserWindow, ipcMain, nativeTheme, Notification } = require('electron')
 
 const path = require('node:path')
 
@@ -7,7 +7,9 @@ const createWindow = () => {
         width: 800,
         height: 600,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js')
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false
         }
     })
 
@@ -36,6 +38,10 @@ app.whenReady().then(() => {
             createWindow()
         }
     })
+    new Notification({
+        title: "New Message",
+        body: "John sent a message"
+    }).show();
 })
 
 app.on('window-all-closed', () => {

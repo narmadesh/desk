@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, Volume2 } from "lucide-react";
+import { Play, Pause, Volume2, CheckCheckIcon, ChevronDown } from "lucide-react";
 import AttachmentRenderer from "./AttachmentRenderer";
 import AttachmentViewer from "./AttachmentViewer";
 import { sendReadReceipt } from "@/utils/socket";
@@ -19,7 +19,7 @@ type ChatMessage = {
   read?: boolean;
   voiceUrl?: string;
   videoUrl?: string;
-  messageType?:string;
+  messageType?: string;
   screenRecordingUrl?: string;
   replyTo?: {
     id: string;
@@ -118,7 +118,7 @@ function AudioPlayer({ voiceUrl }: { voiceUrl: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-slate-50 p-2">
+    <div className="flex items-center gap-2 rounded-2xl bg-slate-100 p-2 w-full">
       <audio
         ref={audioRef}
         src={voiceUrl}
@@ -187,10 +187,16 @@ export function Body({
   hasMore?: boolean;
 }) {
   const divRef = useRef<HTMLDivElement>(null);
+  const divRefOption = useRef<HTMLUListElement>(null);
+  const divRefReaction = useRef<HTMLDivElement>(null);
+  const divRefMessageReaction = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(messages.length);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [slider, setShowSlider] = useState<any[]>([]);
+  const [showChatOptions, setShowChatOptions] = useState<string | null>(null);
+  const [showReactions, setShowReactions] = useState<string | null>(null);
+  const [showMessageReactions, setShowMessageReactions] = useState<string | null>(null);
 
   // Scroll to bottom when new message arrives (but not when loading older messages)
   const initialScrollDone = useRef(false);
@@ -276,6 +282,55 @@ export function Body({
 
     setSelectedFile(null);
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        divRefOption.current &&
+        !divRefOption.current.contains(event.target as Node)
+      ) {
+        setShowChatOptions(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        divRefReaction.current &&
+        !divRefReaction.current.contains(event.target as Node)
+      ) {
+        setShowReactions(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        divRefMessageReaction.current &&
+        !divRefMessageReaction.current.contains(event.target as Node)
+      ) {
+        setShowMessageReactions(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   return (
     <>
       <div
@@ -283,7 +338,7 @@ export function Body({
         ref={divRef}
         onScroll={handleScroll}
       >
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-6">
           {isLoading && (
             <div className="flex justify-center py-4">
               <div className="text-sm text-slate-500">Loading older messages...</div>
@@ -295,42 +350,46 @@ export function Body({
             </div>
           ) : (
             messages.map((message) => {
-              if(!message.read){
+              if (!message.read) {
                 sendReadReceipt({ otherUserId: currentUserId, tempId: message.tempId });
               }
               const isMine = message.from.id === sessionUserId;
-              if(message.messageType && message.messageType == 'info'){
-                return(
+              if (message.messageType && message.messageType == 'info') {
+                return (
                   <div className="flex items-center justify-center text-slate-500" key={message.id}>
-                      {message.message}
+                    {message.message}
                   </div>
                 )
               }
               return (
                 <div key={message.id} className="flex flex-col gap-2">
                   <div
-                    className={`min-w-[30%] max-w-[50%] rounded-3xl p-3 shadow-sm bg-white text-slate-900 ${isMine ? "self-end" : "self-start"
+                    className={`group min-w-30 max-w-[30%] relative rounded-3xl text-left shadow-sm flex flex-wrap justify-between bg-white text-slate-500 ${isMine ? "self-end" : "self-start"
                       }`}
                   >
-                    <div className="mb-1 text-xs uppercase tracking-[0.15em] text-slate-500">
-                      {isMine ? "You" : message.from.name}
+                    <div className="hidden group-hover:flex z-50 justify-end bg-gray-100 absolute w-full top-0">
+                      <ChevronDown className="text-gray-400 cursor-pointer" onClick={() => setShowChatOptions(message.id)} />
                     </div>
+                    {showChatOptions && showChatOptions == message.id && <ul className="bg-white shadow top-6 rounded-lg z-99 flex flex-col divide-y divide-gray-300 absolute right-0 min-w-30" ref={divRefOption}>
+                      <li className="p-2 hover:bg-gray-100 cursor-pointer" onClick={() => { onReply(message); setShowChatOptions(null) }}>Reply</li>
+                      <li className="p-2 hover:bg-gray-100 cursor-pointer" onClick={() => { setShowReactions(message.id); setShowChatOptions(null) }}>React</li>
+                    </ul>}
                     {message.replyTo ? (
-                      <div className="mb-2 rounded-2xl border border-slate-200 bg-slate-100 p-2 text-xs text-slate-700">
-                        Replying to <strong>{message.replyTo.from.name}</strong>: {message.replyTo.message}
+                      <div className="mb-2 rounded-2xl border border-slate-200 bg-slate-100 p-2 text-xs text-slate-700 w-full">
+                        Replied to <strong>{message.replyTo.from.name}</strong>: {message.replyTo.message}
                       </div>
                     ) : null}
                     {message.videoUrl ? (
                       <div className="w-full cursor-pointer relative" onClick={() => setSelectedFile((process.env.NEXT_PUBLIC_API_BASE_URL + '' + message?.videoUrl) as string)}>
                         <video
                           controls
-                          className="max-h-100 rounded-xl"
+                          className="max-h-100 rounded-xl w-full"
                           src={
                             process.env.NEXT_PUBLIC_API_BASE_URL +
                             message.videoUrl
                           }
                         />
-                        <div className="absolute inset-0 flex items-center justify-center h-full w-full text-white bg-black/9">
+                        <div className="absolute inset-0 flex items-center justify-center h-full w-full text-white bg-black/50">
                           <Play size={48} />
                         </div>
                       </div>
@@ -347,13 +406,13 @@ export function Body({
                       <div className="w-full cursor-pointer relative" onClick={() => setSelectedFile((process.env.NEXT_PUBLIC_API_BASE_URL + '' + message?.screenRecordingUrl) as string)}>
                         <video
                           controls
-                          className="max-h-100 rounded-xl"
+                          className="max-h-100 rounded-xl w-full"
                           src={
                             process.env.NEXT_PUBLIC_API_BASE_URL +
                             message.screenRecordingUrl
                           }
                         />
-                        <div className="absolute inset-0 flex items-center justify-center h-full w-full text-white bg-black/9">
+                        <div className="absolute inset-0 flex items-center justify-center h-full w-full text-white bg-black/50">
                           <Play size={48} />
                         </div>
                       </div>
@@ -367,21 +426,19 @@ export function Body({
                       />
                     ) : null}
                     <div
-                      className="whitespace-pre-wrap"
+                      className="whitespace-pre-wrap pl-3"
                       dangerouslySetInnerHTML={{
                         __html: message.message,
                       }}
                     />
                     {message.reactions && message.reactions.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2 text-sm text-slate-600">
-                        {message.reactions.map((reaction) => (
-                          <span key={reaction.id} className="rounded-full bg-slate-200 px-2 py-1">
-                            {reaction.emoji} {reaction.user.id === sessionUserId ? "You" : reaction.user.name}
-                          </span>
-                        ))}
+                      <div className="mt-2 flex flex-wrap gap-2 text-sm text-slate-600 absolute -bottom-4 right-0">
+                        <span key={message.reactions[0].id} className="rounded-full bg-slate-200 cursor-pointer" onClick={() => setShowMessageReactions(message.id)}>
+                          {message.reactions[0].emoji}{message.reactions.length > 1 ? "+" + (message.reactions.length - 1) : null}
+                        </span>
                       </div>
                     ) : null}
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="mt-3 pr-1 flex gap-1 items-center justify-between text-[11px] text-slate-400">
                       <span>
                         {new Date(message.timestamp).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -390,20 +447,12 @@ export function Body({
                       </span>
                       <div className="flex items-center gap-2">
                         {isMine && message.read ? (
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
-                            Seen
-                          </span>
+                          <CheckCheckIcon size={15} />
                         ) : null}
-                        <button
-                          className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200"
-                          onClick={() => onReply(message)}
-                        >
-                          Reply
-                        </button>
                       </div>
                     </div>
                   </div>
-                  <div className={`flex flex-wrap gap-1 ${isMine ? "justify-end" : "justify-start"}`}>
+                  {showReactions && showReactions == message.id && <div ref={divRefReaction} className={`flex flex-wrap gap-1 ${isMine ? "justify-end" : "justify-start"}`}>
                     {reactions.map((emoji) => (
                       <button
                         key={emoji}
@@ -413,7 +462,16 @@ export function Body({
                         {emoji}
                       </button>
                     ))}
-                  </div>
+                  </div>}
+                  {showMessageReactions && showMessageReactions == message.id && message.reactions && message.reactions.length > 0 ? (
+                    <div className={`mt-2 flex flex-wrap gap-2 text-sm text-slate-600 ${isMine ? "justify-end" : "justify-start"}`} ref={divRefMessageReaction}>
+                      {message.reactions.map((reaction) => (
+                        <span key={reaction.id} className="rounded-full bg-slate-200 px-2 py-1">
+                          {reaction.emoji} {reaction.user.id === sessionUserId ? "You" : reaction.user.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               );
             })

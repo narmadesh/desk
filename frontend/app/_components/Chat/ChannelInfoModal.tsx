@@ -9,30 +9,22 @@ import Image from "next/image";
 
 export default function ChannelInfoModal({
     setShowInfoModal,
-    setCurrentUser,
     currentUser,
     setMemberId,
-    setShowDeleteMemberModal
+    setShowDeleteMemberModal,
+    users
 }: {
     setShowInfoModal: (channel: boolean) => void;
-    setCurrentUser: (user: any) => void;
     currentUser: any;
     setMemberId: (id: string) => void;
-    setShowDeleteMemberModal:(show:boolean) => void
+    setShowDeleteMemberModal: (show: boolean) => void;
+    users: any
 }) {
 
-    const [users, setUsers] = useState<User[]>([]);
     const { profile } = useSession();
-
-    useEffect(() => {
-        axiosInstance.get('/api/users').then(function (resp) {
-            if (resp.data.users && resp.data.users.length > 0) {
-                setUsers(resp.data.users);
-            }
-        })
-    }, []);
-
+    const [isLoading, setIsLoading] = useState<string | null>(null);
     const addMember = async (id: string) => {
+        setIsLoading(id);
         const response = await axiosInstance.post('/api/group/member', { userId: id, groupId: currentUser.id });
         if (response.data.success) {
             toast.success(response.data.message);
@@ -41,6 +33,7 @@ export default function ChannelInfoModal({
         else {
             toast.error(response.data.message);
         }
+        setIsLoading(null);
     };
     return (
         <div className="fixed inset-0 z-99 bg-black/50 bg-opacity-60 flex items-start justify-center px-4">
@@ -55,8 +48,8 @@ export default function ChannelInfoModal({
                 <hr />
                 <div className="p-2 overflow-y-auto flex-1">
                     <ul className="divide-y divide-gray-200 text-slate-500">
-                        {users.map((user) => {
-                            if (currentUser.members.filter((e: any) => e.userId == user.id).length > 0) {
+                        {users.map((user: any) => {
+                            if ((currentUser?.members ?? [])?.filter((e: any) => e.userId == user.id).length > 0) {
                                 return <li className="flex justify-between items-center p-2" key={user.id}>
                                     <div className="flex items-center gap-2"><Image
                                         alt={user.name as string}
@@ -69,18 +62,18 @@ export default function ChannelInfoModal({
                                         className="h-5 w-5 rounded-full object-cover"
                                     />
                                         {user.name}</div>
-                                    <button className="text-blue-500 cursor-pointer" onClick={() => {
+                                    <button className="text-blue-500 cursor-pointer" disabled={isLoading == user.id} onClick={() => {
                                         if (user.id != profile?.id) {
                                             setMemberId(user.id);
                                             setShowInfoModal(false);
                                             setShowDeleteMemberModal(true);
                                         }
-                                    }}>{user.id == profile?.id ? 'You' : 'Remove from channel'}</button>
+                                    }}>Remove from channel</button>
                                 </li>
                             }
                         })}
-                        {users.map((user) => {
-                            if (currentUser.members.filter((e: any) => e.userId == user.id).length <= 0) {
+                        {users.map((user: any) => {
+                            if ((currentUser?.members ?? [])?.filter((e: any) => e.userId == user.id).length <= 0) {
                                 return <li className="flex justify-between items-center p-2" key={user.id}>
                                     <div className="flex items-center gap-2"><Image
                                         alt={user.name as string}
@@ -93,9 +86,9 @@ export default function ChannelInfoModal({
                                         className="h-5 w-5 rounded-full object-cover"
                                     />
                                         {user.name}</div>
-                                    <button className="text-blue-500 cursor-pointer" onClick={() => {
+                                    <button className="text-blue-500 cursor-pointer" disabled={isLoading == user.id} onClick={() => {
                                         addMember(user.id);
-                                    }}>Add to channel</button>
+                                    }}>{isLoading == user.id ? 'Adding...' : 'Add to channel'}</button>
                                 </li>
                             }
                         })}

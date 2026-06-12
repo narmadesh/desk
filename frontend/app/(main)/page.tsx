@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 export default function Home() {
   const editorRef = useRef<HTMLDivElement>(null);
   const [users, setUsers] = useState<any>([]);
+  const [channels, setChannels] = useState<any>([]);
   const [tab, setTab] = useState("chat");
   const [search, setSearch] = useState("");
   const [currentUser, setCurrentUser] = useState<any>({});
@@ -46,36 +47,32 @@ export default function Home() {
   const socket = useSocket();
 
   const getUsers = () => {
-    if (tab == 'chat') {
-      axiosInstance.get('/api/users').then(function (resp) {
-        if (resp.data.users && resp.data.users.length > 0) {
-          setUsers(resp.data.users.filter((u: User) => u.id != profile?.id));
-          resp.data.users.filter((u: any) => u.online == true).map((u: User) => setOnlineUsers((prev: any) => ({ ...prev, [u.id]: true })));
-          if (!currentUser || !currentUser.id) {
-            setCurrentUser(resp.data.users.filter((u: User) => u.id != profile?.id)[0]);
-          }
-        }
-      })
-    }
+    axiosInstance.get('/api/users').then(function (resp) {
+      if (resp.data.users && resp.data.users.length > 0) {
+        setUsers(resp.data.users.filter((u: User) => u.id != profile?.id));
+        resp.data.users.filter((u: any) => u.online == true).map((u: User) => setOnlineUsers((prev: any) => ({ ...prev, [u.id]: true })));
+      }
+    })
+  }
 
-    if (tab == 'channels') {
-      axiosInstance.get('/api/group').then(function (resp) {
-        if (resp.data.groups) {
-          setUsers(resp.data.groups);
-          if (!currentUser || !currentUser.id && resp.data.groups.length > 0) {
-            setCurrentUser(resp.data.groups[0]);
-          }
-        }
-      })
-    }
+  const getChannels = () => {
+    axiosInstance.get('/api/group').then(function (resp) {
+      if (resp.data.groups) {
+        setChannels(resp.data.groups);
+      }
+    })
   }
 
   useEffect(() => {
-    if (!socket) return;
-    console.log('[client] socket present', { id: socket.id, connected: socket.connected });
-    console.log('[client] registering socket handlers');
+    if (!profile) return;
     getUsers();
+    getChannels();
+  }, [profile]);
+
+  useEffect(() => {
+    if (!socket) return;
     getMessageCount();
+
     socket.on("user:online", (id: string) => {
       setOnlineUsers((prev: any) => ({ ...prev, [id]: true }));
     });
@@ -101,50 +98,83 @@ export default function Home() {
         return n;
       });
     });
-    socket.on("group:new", () => {
-      getUsers();
+    socket.on("group:new", (payload: any) => {
+      setChannels((prev: any) => {
+        if (prev.some((m: any) => m.id === payload.id)) {
+          return prev;
+        }
+
+        return [...prev, payload];
+      });
     });
-    socket.on("member:new", () => {
-      getUsers();
-    });
-    socket.on("message:new", (payload: any) => {
-      console.log('[client] received message:new', { payload, currentUserId: currentUser?.id });
-      if (!payload?.id) {
-        console.log('[client] message:new missing id, payload will be inspected', payload);
-        // continue to attempt to process payload even if id missing
+
+    socket.on("member:new", (payload: any) => {
+      if (payload?.userId == profile?.id) {
+        setCurrentUser(payload);
       }
+      else {
+        setChannels((prev: any) => {
+          if (prev.some((m: any) => m.id === payload.id)) {
+            return prev;
+          }
+
+          return [...prev, payload];
+        });
+      }
+    });
+
+    socket.on("group:delete", (groupId: any) => {
+      if (currentUser?.id == groupId) {
+        setCurrentUser({});
+      }
+      setChannels(channels.filter((e: any) => e.id != groupId));
+    });
+
+    socket.on("member:delete", (groupId: any) => {
+      if (currentUser?.id == groupId) {
+        setCurrentUser({});
+      }
+      setChannels(channels.filter((e: any) => e.id != groupId));
+    });
+
+    socket.on("member:remove", (group: any) => {
+      setCurrentUser(group);
+    });
+
+    socket.on("message:new", (payload: any) => {
       if (tab == 'chat' && payload.to !== profile?.id && payload.from?.id !== profile?.id) return;
 
       getMessageCount()
       const incomingId = payload.id ?? payload.tempId ?? `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const incoming: ChatMessage = {
-        id: incomingId,
-        message: payload.message ?? payload.content ?? "",
-        plainText: payload.message ?? payload.content ?? "",
-        voiceUrl: payload.voiceUrl ?? null,
-        videoUrl: payload.videoUrl ?? null,
-        screenRecordingUrl: payload.screenRecordingUrl ?? null,
-        messageType: payload.messageType ?? "",
-        from: {
-          id: payload.from?.id,
-          name: payload.from?.name,
-        },
-        to: payload.to,
-        timestamp: payload.timestamp,
-        read: payload.read ?? false,
-        replyTo: payload.replyTo
-          ? {
-            id: payload.replyTo.id,
-            message: payload.replyTo.message,
-            from: {
-              id: payload.replyTo.from.id,
-              name: payload.replyTo.from.name,
-            },
-          }
-          : null,
-        reactions: payload.reactions ?? [],
-        attachments: payload.attachments ?? [],
-      };
+      const incoming = payload;
+      // const incoming: ChatMessage = {
+      //   id: incomingId,
+      //   message: payload.message ?? payload.content ?? "",
+      //   plainText: payload.message ?? payload.content ?? "",
+      //   voiceUrl: payload.voiceUrl ?? null,
+      //   videoUrl: payload.videoUrl ?? null,
+      //   screenRecordingUrl: payload.screenRecordingUrl ?? null,
+      //   messageType: payload.messageType ?? "",
+      //   from: {
+      //     id: payload.from?.id,
+      //     name: payload.from?.name,
+      //   },
+      //   to: payload.to,
+      //   timestamp: payload.timestamp,
+      //   read: payload.read ?? false,
+      //   replyTo: payload.replyTo
+      //     ? {
+      //       id: payload.replyTo.id,
+      //       message: payload.replyTo.message,
+      //       from: {
+      //         id: payload.replyTo.from.id,
+      //         name: payload.replyTo.from.name,
+      //       },
+      //     }
+      //     : null,
+      //   reactions: payload.reactions ?? [],
+      //   attachments: payload.attachments ?? [],
+      // };
 
       setMessages((prev) => {
         // Already received this message
@@ -170,7 +200,6 @@ export default function Home() {
       });
 
       if (payload.from?.id === currentUser?.id && payload.to === profile?.id) {
-        console.log('[client] sending read receipt', { otherUserId: currentUser.id, tempId: payload.tempId });
         sendReadReceipt({ otherUserId: currentUser.id, tempId: payload.tempId });
         setTimeout(function () {
           getMessageCount()
@@ -189,7 +218,6 @@ export default function Home() {
     });
 
     socket.on("message:read", (payload: any) => {
-      console.log('[client] received message:read', { payload, currentUserId: currentUser?.id });
       if (!payload?.messageIds && !payload?.tempId) return;
       setMessages((prev) =>
         prev.map((message) =>
@@ -564,7 +592,7 @@ export default function Home() {
         <ChannelsList
           search={search}
           setSearch={setSearch}
-          users={users}
+          users={channels}
           session={profile}
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
@@ -629,7 +657,7 @@ export default function Home() {
         )}
       </div>
       {addChannel ? <ChannelModal setAddChannel={setAddChannel} getUsers={getUsers} setCurrentUser={setCurrentUser} /> : null}
-      {showInfoModal ? <ChannelInfoModal setShowInfoModal={setShowInfoModal} currentUser={currentUser} setCurrentUser={setCurrentUser} setMemberId={setMemberId} setShowDeleteMemberModal={setShowDeleteMemberModal} /> : null}
+      {showInfoModal ? <ChannelInfoModal setShowInfoModal={setShowInfoModal} currentUser={currentUser} setMemberId={setMemberId} setShowDeleteMemberModal={setShowDeleteMemberModal} users={users} /> : null}
       {showDeleteChannelModal ? <DeleteModal title="Are you sure" text="You want to remove this channel" setShowDeleteModal={setShowDeleteChannelModal} currentUser={currentUser} setCurrentUser={setCurrentUser} onClick={() => removeChannel()} /> : null}
       {showDeleteMemberModal ? <DeleteModal title="Are you sure" text="You want to remove this member" setShowDeleteModal={setShowDeleteMemberModal} currentUser={currentUser} setCurrentUser={setCurrentUser} onClick={() => removeMember()} /> : null}
     </main>

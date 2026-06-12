@@ -21,7 +21,7 @@ export default function AttachmentRenderer({
 
     return (
         <>
-            <div className={`grid gap-2 ${attachments.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+            <div className={`w-full grid gap-2 ${attachments.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
                 {attachments.map((file, index) => {
                     if (index < 3) {
                         const fullUrl =

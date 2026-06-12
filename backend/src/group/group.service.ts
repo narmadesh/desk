@@ -127,7 +127,11 @@ export class GroupService {
     }
     await this.prisma.groupMember.deleteMany({ where: { groupId: id } });
     await this.prisma.group.delete({ where: { id: id } });
-    return { success: true, message: 'Channel removed successfully',members:members };
+    return {
+      success: true,
+      message: 'Channel removed successfully',
+      members: members,
+    };
   }
 
   async createMember(input: GroupMember, user: User) {
@@ -136,6 +140,12 @@ export class GroupService {
         data: {
           userId: input.userId,
           groupId: input.groupId,
+        },
+      });
+      const group = await this.prisma.group.findFirst({
+        where: { id: input.groupId },
+        include: {
+          members: true,
         },
       });
       if (groupMember) {
@@ -171,6 +181,7 @@ export class GroupService {
           message: `${member?.name} added to channel`,
           groupMember: groupMember,
           savedMessage: message,
+          group,
         };
       }
       return {
@@ -185,10 +196,28 @@ export class GroupService {
     }
   }
 
+  async findAllMembers(groupId) {
+    const groupMembers = await this.prisma.groupMember.findMany({
+      where: {
+        groupId,
+      },
+    });
+    if (!groupMembers) {
+      return {
+        success: false,
+      };
+    }
+    return {
+      success: true,
+      groupMembers: serializeBigInt(groupMembers),
+    };
+  }
+
   async removeMember(groupId: string, id: string, user: User) {
     const member = await this.prisma.user.findFirst({
       where: { id },
     });
+    
     const message = await this.prisma.message.create({
       data: {
         senderId: user.id,
@@ -216,10 +245,15 @@ export class GroupService {
     await this.prisma.groupMember.deleteMany({
       where: { userId: id, groupId: groupId },
     });
+    const group = await this.prisma.group.findFirst({
+      where: { id: groupId },
+      include: { members: true },
+    });
     return {
       success: true,
       message: `${member?.name} removed successfully`,
       savedMessage: message,
+      group,
     };
   }
 }

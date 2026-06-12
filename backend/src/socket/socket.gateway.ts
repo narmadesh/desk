@@ -160,77 +160,48 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         },
       });
 
+      const payload = {
+        id: createdMessage.id,
+        tempId,
+        message: createdMessage.content,
+        content: createdMessage.content,
+        read: false,
+        sent: true,
+        delivered: false,
+        from: createdMessage.sender,
+        to: createdMessage.receiverId,
+        timestamp: createdMessage.createdAt.toISOString(),
+        replyTo: createdMessage.replyTo
+          ? {
+              id: createdMessage.replyTo.id,
+              message: createdMessage.replyTo.content,
+              from: {
+                id: createdMessage.replyTo.sender.id,
+                name: createdMessage.replyTo.sender.name,
+              },
+            }
+          : null,
+        reactions: createdMessage.reactions.map((reaction) => ({
+          id: reaction.id,
+          emoji: reaction.emoji,
+          user: {
+            id: reaction.user.id,
+            name: reaction.user.name,
+          },
+        })),
+      };
+
       const group = await this.prisma.group.findFirst({
         where: { id: recipientId },
         include: { members: true },
       });
       const sock = this.server;
       if (group) {
-        const payload = {
-          id: createdMessage.id,
-          tempId,
-          message: createdMessage.content,
-          content: createdMessage.content,
-          read: false,
-          sent: true,
-          delivered: false,
-          from: createdMessage.sender,
-          to: createdMessage.receiverId,
-          timestamp: createdMessage.createdAt.toISOString(),
-          replyTo: createdMessage.replyTo
-            ? {
-                id: createdMessage.replyTo.id,
-                message: createdMessage.replyTo.content,
-                from: {
-                  id: createdMessage.replyTo.sender.id,
-                  name: createdMessage.replyTo.sender.name,
-                },
-              }
-            : null,
-          reactions: createdMessage.reactions.map((reaction) => ({
-            id: reaction.id,
-            emoji: reaction.emoji,
-            user: {
-              id: reaction.user.id,
-              name: reaction.user.name,
-            },
-          })),
-        };
         group.members.forEach(function (member) {
           sock.to(`user:${member.userId}`).emit('message:new', payload);
         });
         this.server.to(`user:${recipientId}`).emit('message:new', payload);
       } else {
-        const payload = {
-          id: createdMessage.id,
-          tempId,
-          message: createdMessage.content,
-          content: createdMessage.content,
-          read: false,
-          sent: true,
-          delivered: false,
-          from: createdMessage.sender,
-          to: createdMessage.receiverId,
-          timestamp: createdMessage.createdAt.toISOString(),
-          replyTo: createdMessage.replyTo
-            ? {
-                id: createdMessage.replyTo.id,
-                message: createdMessage.replyTo.content,
-                from: {
-                  id: createdMessage.replyTo.sender.id,
-                  name: createdMessage.replyTo.sender.name,
-                },
-              }
-            : null,
-          reactions: createdMessage.reactions.map((reaction) => ({
-            id: reaction.id,
-            emoji: reaction.emoji,
-            user: {
-              id: reaction.user.id,
-              name: reaction.user.name,
-            },
-          })),
-        };
         this.server.to(`user:${recipientId}`).emit('message:new', payload);
         this.server.to(`user:${userId}`).emit('message:new', payload);
       }
@@ -301,8 +272,20 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         })) ?? [],
     };
 
-    this.server.to(`user:${to}`).emit('message:reaction', payload);
-    this.server.to(`user:${userId}`).emit('message:reaction', payload);
+    const group = await this.prisma.group.findFirst({
+      where: { id: to },
+      include: { members: true },
+    });
+    const sock = this.server;
+    if (group) {
+      group.members.forEach(function (member) {
+        sock.to(`user:${member.userId}`).emit('message:reaction', payload);
+      });
+      this.server.to(`user:${to}`).emit('message:reaction', payload);
+    } else {
+      this.server.to(`user:${to}`).emit('message:reaction', payload);
+      this.server.to(`user:${userId}`).emit('message:reaction', payload);
+    }
   }
 
   @SubscribeMessage('message:read')

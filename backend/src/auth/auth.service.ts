@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { User, WorkSpace } from 'generated/prisma';
 import axios from 'axios';
+import { serializeBigInt } from 'src/lib/utils';
 
 @Injectable()
 export class AuthService {
@@ -98,7 +99,7 @@ export class AuthService {
       return {
         message: 'Validated successfully',
         success: true,
-        user: data,
+        user: serializeBigInt(data),
       };
     }
     return {
@@ -144,7 +145,7 @@ export class AuthService {
       return {
         message: 'Code verified successfully',
         success: true,
-        user: user,
+        user: serializeBigInt(user),
       };
     }
     return {
@@ -290,7 +291,7 @@ export class AuthService {
         }
       }
       return {
-        user: user,
+        user: serializeBigInt(user),
         message: 'Verified successfully',
         success: true,
       };
@@ -323,7 +324,7 @@ export class AuthService {
         message: 'Invalid credentials',
       };
     }
-    const { password, ...payload } = user;
+    const { password, ...payload } = serializeBigInt(user);
     return {
       // 💡 Here the JWT secret key that's used for signing the payload
       // is the key that was passsed in the JwtModule

@@ -96,7 +96,7 @@ model Message {
   replyToId          String?  @db.ObjectId
   createdAt          DateTime @default(now())
   read               Boolean  @default(false)
-  tempId             String?  @unique
+  tempId             String   @unique
   messageType        String?
 
   receiver     User              @relation("receiverUser", fields: [receiverId], references: [id])

@@ -24,6 +24,14 @@ export default function DeleteModal({
     onClick: () => void
 }) {
 
+    const [isLoading, setIsLoading] = useState(false);
+    const deleteModal = () => {
+        setIsLoading(true);
+        onClick();
+        setTimeout(function(){
+            setIsLoading(false);
+        },2000);
+    }
     return (
         <div className="fixed inset-0 z-99 bg-black/50 bg-opacity-60 flex items-start justify-center px-4">
             <div className="relative top-10 mx-auto shadow-xl rounded-md bg-white max-w-xl w-full flex flex-col max-h-[90vh]">
@@ -50,9 +58,10 @@ export default function DeleteModal({
                     <Button
                         variant="danger"
                         type="button"
-                        onClick={onClick}
+                        onClick={deleteModal}
+                        disabled={isLoading}
                     >
-                        Delete
+                        {isLoading ? 'Deleting...' : 'Delete'}
                     </Button>
                 </div>
             </div>

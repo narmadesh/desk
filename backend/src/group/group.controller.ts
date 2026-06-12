@@ -32,7 +32,7 @@ export class GroupController {
     );
     this.socketGateway.server
       .to(`user:${response?.group?.userId}`)
-      .emit('group:new');
+      .emit('group:new', response.group);
     return response;
   }
 
@@ -61,7 +61,9 @@ export class GroupController {
     if (response?.members) {
       const socket = this.socketGateway;
       response.members.forEach(function (member) {
-        socket.server.to(`user:${member.userId}`).emit('group:new');
+        socket.server
+          .to(`user:${member.userId}`)
+          .emit('group:delete', member.groupId);
       });
     }
     return response;
@@ -103,15 +105,26 @@ export class GroupController {
         },
       })),
     };
+    const sock = this.socketGateway.server;
+    if (save?.group?.members) {
+      save?.group?.members.map(function (memb) {
+        sock.to(`user:${memb.userId}`).emit('message:new', payload);
+      });
+    }
 
     this.socketGateway.server
-      .to(`user:${savedMessage.senderId}`)
-      .emit('message:new', payload);
-    this.socketGateway.server.to(`user:${member.userId}`).emit('group:new');
+      .to(`user:${member.userId}`)
+      .emit('member:new', save.group);
     this.socketGateway.server
-      .to(`user:${savedMessage.senderId}`)
-      .emit('member:new');
+      .to(`user:${save.group?.userId}`)
+      .emit('member:new', save.group);
     return save;
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('member/:groupId')
+  findAllMembers(@Body() groupId: string) {
+    return this.groupService.findAllMembers(groupId);
   }
 
   @UseGuards(AuthGuard)
@@ -160,13 +173,16 @@ export class GroupController {
       })),
     };
 
+    const sock = this.socketGateway.server;
+    if (saved?.group?.members) {
+      saved?.group?.members.map(function (memb) {
+        sock.to(`user:${memb.userId}`).emit('message:new', payload);
+      });
+    }
+    this.socketGateway.server.to(`user:${id}`).emit('member:delete', groupId);
     this.socketGateway.server
-      .to(`user:${savedMessage.senderId}`)
-      .emit('message:new', payload);
-    this.socketGateway.server
-      .to(`user:${groupId}`)
-      .emit('message:new', payload);
-    this.socketGateway.server.to(`user:${id}`).emit('group:new');
+      .to(`user:${saved.group?.userId}`)
+      .emit('member:remove', saved.group);
     return saved;
   }
 }

@@ -66,10 +66,6 @@ export function ChannelsList({
                 </div>
                 <div className="flex items-center gap-4">
                   {userMessageCount[user.id] && Number(userMessageCount[user.id]) > 0 ? (<div className="bg-white px-2 flex items-center justify-center rounded-full text-gray-800">{userMessageCount[user.id]}</div>) : null}
-                  {Object.keys(typingUsers).length > 0 &&
-                    typingUsers[user.id] ? (
-                    <span className="typing">typing…</span>
-                  ) : null}
                 </div>
               </li>
             ))}
